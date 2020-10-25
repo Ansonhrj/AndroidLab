@@ -44,10 +44,10 @@ import kotlinx.coroutines.*
 
 class CheeseActivity : BaseSearchActivity() {
 
-    private fun createButtonClickObservable(): Observable<String> {
-        return Observable.create { emitter ->
+    private fun createButtonClickObservable(): Observable<String> { //泛型<String>就是变化属性的类型
+        return Observable.create { emitter ->   //用emitter为参数，创建一个ObservableOnSubscribe 对象， 用它来定义会变化（被观察）的属性
             searchButton.setOnClickListener {
-                emitter.onNext(queryEditText.text.toString())
+                emitter.onNext(queryEditText.text.toString())  //通过 emitter.onNext，指明变化属性的值
             }
             emitter.setCancellable {
                 searchButton.setOnClickListener(null)
@@ -65,14 +65,14 @@ class CheeseActivity : BaseSearchActivity() {
 //
 //        }
 
-        searchTextObservable.subscribeOn(AndroidSchedulers.mainThread())
-                .observeOn(Schedulers.io())
-                .map {
+        searchTextObservable.subscribeOn(AndroidSchedulers.mainThread())    //对应observable变化相关的操作，假如和UI有关，就要在mainthread
+                .observeOn(Schedulers.io()) //对于io和网络请求，可以切换到IO thread去操作
+                .map {  //在map 里面，通过it 获取到变化的内容
                     println("asn in map, + ${Thread.currentThread().name}")
                     cheeseSearchEngine.search(it)
                 }
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe {
+                .observeOn(AndroidSchedulers.mainThread()) //对应observable变化相关的操作，假如和UI有关，就要在mainthread
+                .subscribe {    //这里的it是map处理过的结果
                     println("asn in subscribe, + ${Thread.currentThread().name}")
                     showResult(it)
                 }
