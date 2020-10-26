@@ -30,6 +30,8 @@
 
 package com.raywenderlich.android.cheesefinder
 
+import android.text.Editable
+import android.text.TextWatcher
 import com.raywenderlich.android.cheesefinder.database.Cheese
 import io.reactivex.Observable
 import io.reactivex.Scheduler
@@ -40,6 +42,7 @@ import kotlinx.android.synthetic.main.activity_cheeses.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import kotlinx.coroutines.*
+import java.util.concurrent.TimeUnit
 
 
 class CheeseActivity : BaseSearchActivity() {
@@ -55,10 +58,37 @@ class CheeseActivity : BaseSearchActivity() {
         }
     }
 
+    private fun createTextChangeObservable(): Observable<String> {
+        val textChangeObservable = Observable.create<String> { emitter ->
+            val textWatcher = object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    s?.toString()?.let {
+                        println("asn s=" + it)
+                        println("asn onTextChanged, + ${Thread.currentThread().name}")
+                        emitter.onNext(it)
+                    }
+                }
+
+                override fun afterTextChanged(s: Editable?) = Unit
+            }
+            queryEditText.addTextChangedListener(textWatcher)
+            emitter.setCancellable {
+                queryEditText.removeTextChangedListener(textWatcher)
+            }
+        }
+
+        return textChangeObservable.filter {
+            it.length >=2
+        }.debounce (1000, TimeUnit.MILLISECONDS,AndroidSchedulers.mainThread() )  //debounce默认是在computation schedular
+    }
+
     override fun onStart() {
         super.onStart()
 
-        val searchTextObservable = createButtonClickObservable()
+ //       val searchTextObservable = createButtonClickObservable()
+        val searchTextObservable = createTextChangeObservable()
 
 //        searchTextObservable.subscribe{ query ->
 //            showResult(cheeseSearchEngine.search(query))
@@ -66,14 +96,19 @@ class CheeseActivity : BaseSearchActivity() {
 //        }
 
         searchTextObservable.subscribeOn(AndroidSchedulers.mainThread())    //对应observable变化相关的操作，假如和UI有关，就要在mainthread
+                .doOnNext {
+                    println("asn in doonnext, + ${Thread.currentThread().name}")
+                    showProgress()
+                }
                 .observeOn(Schedulers.io()) //对于io和网络请求，可以切换到IO thread去操作
-                .map {  //在map 里面，通过it 获取到变化的内容
+                .map {  //在map 里面，通过it 获取到变化的内容. 用于suscribe 前，因为map有可能将obserable 输出的内容类型变化了
                     println("asn in map, + ${Thread.currentThread().name}")
                     cheeseSearchEngine.search(it)
                 }
                 .observeOn(AndroidSchedulers.mainThread()) //对应observable变化相关的操作，假如和UI有关，就要在mainthread
                 .subscribe {    //这里的it是map处理过的结果
                     println("asn in subscribe, + ${Thread.currentThread().name}")
+                    hideProgress()
                     showResult(it)
                 }
     }
@@ -97,5 +132,25 @@ class CheeseActivity : BaseSearchActivity() {
 //            }
 //            println("asn after runblock, + ${Thread.currentThread().name}")
 //        }
+//    }
+
+//    override fun onStart() {
+//        super.onStart()
+//
+//        val textWatcher = object : TextWatcher {
+//            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+//
+//            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+//                s?.toString()?.let {
+//                    println("asn s=" + it)
+//                    println("asn onTextChanged, + ${Thread.currentThread().name}")
+//                    showResult(cheeseSearchEngine.search(it))   //对变化的操作也要写在这里，变化和对变化的操作就耦合了，不想rx，将变化的操作交由observer去定义
+//                }
+//            }
+//
+//            override fun afterTextChanged(s: Editable?) = Unit
+//        }
+//        queryEditText.addTextChangedListener(textWatcher)
+//
 //    }
 }
