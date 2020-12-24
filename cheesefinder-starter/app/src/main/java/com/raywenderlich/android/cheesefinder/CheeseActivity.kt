@@ -33,6 +33,8 @@ package com.raywenderlich.android.cheesefinder
 import android.text.Editable
 import android.text.TextWatcher
 import com.raywenderlich.android.cheesefinder.database.Cheese
+import io.reactivex.BackpressureStrategy
+import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -87,15 +89,14 @@ class CheeseActivity : BaseSearchActivity() {
     override fun onStart() {
         super.onStart()
 
- //       val searchTextObservable = createButtonClickObservable()
-        val searchTextObservable = createTextChangeObservable()
+        val buttonClickStream = createButtonClickObservable()
+                .toFlowable(BackpressureStrategy.LATEST)
+        val textChangeStream = createTextChangeObservable()
+                .toFlowable(BackpressureStrategy.BUFFER)
+       // val searchTextObservable = Observable.merge<String>(buttonClickStream,textChangeStream)
+        val searchTextFlowable = Flowable.merge<String>(buttonClickStream,textChangeStream)
 
-//        searchTextObservable.subscribe{ query ->
-//            showResult(cheeseSearchEngine.search(query))
-//
-//        }
-
-        searchTextObservable.subscribeOn(AndroidSchedulers.mainThread())    //对应observable变化相关的操作，假如和UI有关，就要在mainthread
+        searchTextFlowable.subscribeOn(AndroidSchedulers.mainThread())    //对应observable变化相关的操作，假如和UI有关，就要在mainthread
                 .doOnNext {
                     println("asn in doonnext, + ${Thread.currentThread().name}")
                     showProgress()

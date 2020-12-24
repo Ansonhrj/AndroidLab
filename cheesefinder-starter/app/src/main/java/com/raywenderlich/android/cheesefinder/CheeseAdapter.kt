@@ -35,6 +35,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.raywenderlich.android.cheesefinder.database.Cheese
+import io.reactivex.Maybe
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.list_item.view.*
 
@@ -59,6 +60,12 @@ class CheeseAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     val cheese = cheeses[position]
     holder.itemView.textView.text = cheese.name
     holder.itemView.imageFavorite.isChecked = cheese.favorite == 1
+
+    Maybe.create<Boolean>{ emitter ->
+      emitter.setCancellable{
+
+      }
+    }
 
   }
 
